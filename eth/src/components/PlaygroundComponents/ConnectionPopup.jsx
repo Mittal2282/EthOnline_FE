@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion'; // eslint-disable-line no-unused-vars
 
 const ConnectionPopup = ({ isOpen, onClose, nodeData }) => {
   const [selectedEvent, setSelectedEvent] = useState('');

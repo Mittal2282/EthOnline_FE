@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import ReactFlow, {
   MiniMap,
   Controls,
@@ -14,23 +14,52 @@ import { motion } from 'framer-motion'; // eslint-disable-line no-unused-vars
 import EntityNode from './EntityNode';
 import CustomEdge from './CustomEdge';
 import ConnectionPopup from './ConnectionPopup';
+import { usePlayground } from '../../hooks/usePlayground';
 
-// Define the node types
+// Define the node types (moved outside component to prevent recreation)
 const nodeTypes = {
   entityNode: EntityNode,
 };
 
-// Define the edge types
+// Define the edge types (moved outside component to prevent recreation)
 const edgeTypes = {
   default: CustomEdge,
 };
 
 const ReactFlowPlayground = () => {
+  const { activePlayground, updateActivePlayground, clearActivePlayground } = usePlayground();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
   const reactFlowWrapper = useRef(null);
   const [popupState, setPopupState] = useState({ isOpen: false, nodeData: null });
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Initialize nodes and edges from active playground when it changes
+  useEffect(() => {
+    if (activePlayground) {
+      setNodes(activePlayground.nodes || []);
+      setEdges(activePlayground.edges || []);
+      setIsInitialized(true);
+    }
+  }, [activePlayground, setNodes, setEdges]);
+
+  // Reset initialization flag when playground changes (but not when creating new ones)
+  useEffect(() => {
+    if (activePlayground) {
+      setIsInitialized(false);
+    }
+  }, [activePlayground]);
+
+  // Update playground context when local state changes (with debouncing)
+  useEffect(() => {
+    if (isInitialized && activePlayground) {
+      const timeoutId = setTimeout(() => {
+        updateActivePlayground({ nodes, edges });
+      }, 300);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [nodes, edges, isInitialized, activePlayground, updateActivePlayground]);
 
   // Entities data
   const entities = [
@@ -207,6 +236,7 @@ const ReactFlowPlayground = () => {
   const clearPlayground = () => {
     setNodes([]);
     setEdges([]);
+    clearActivePlayground();
   };
 
   const deleteNode = (nodeId) => {
@@ -226,9 +256,9 @@ const ReactFlowPlayground = () => {
   
 
   return (
-    <div className="flex h-[90vh] bg-white">
+    <div className="flex h-full bg-white">
       {/* Sidebar (collapsed by default, expands on hover) */}
-      <div className="group/sidebar bg-gray-50 border-r border-gray-100 h-[90vh] flex flex-col overflow-hidden transition-all duration-300 w-16 hover:w-72">
+      <div className="group/sidebar bg-gray-50 border-r border-gray-100 h-full flex flex-col overflow-hidden transition-all duration-300 w-16 hover:w-72">
 
         {/* Entities List */}
         <div className="flex-1 overflow-y-auto p-2 group-hover/sidebar:p-4 space-y-2">

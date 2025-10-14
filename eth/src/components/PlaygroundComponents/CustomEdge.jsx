@@ -18,11 +18,61 @@ const CustomEdge = ({ sourceX, sourceY, targetX, targetY, sourcePosition, target
   // Animation effect for moving arrows
   useEffect(() => {
     const interval = setInterval(() => {
-      setAnimationOffset(prev => (prev + 0.02) % 1); // Move arrows along the path
-    }, 50); // Update every 50ms for smooth animation
+      setAnimationOffset(prev => (prev + 0.008) % 1); // Slower movement for elegant effect
+    }, 80); // Update every 80ms for smoother, slower animation
 
     return () => clearInterval(interval);
   }, []);
+
+  // Function to calculate position along bezier curve
+  const getPointOnBezierCurve = (t) => {
+    // Extract control points from the bezier path
+    const dx = targetX - sourceX;
+    
+    // Calculate control points for a smooth curve
+    const controlOffsetX = Math.abs(dx) * 0.5;
+    
+    const cp1X = sourceX + controlOffsetX;
+    const cp1Y = sourceY;
+    const cp2X = targetX - controlOffsetX;
+    const cp2Y = targetY;
+    
+    // Cubic bezier formula: B(t) = (1-t)³P₀ + 3(1-t)²tP₁ + 3(1-t)t²P₂ + t³P₃
+    const x = Math.pow(1 - t, 3) * sourceX + 
+              3 * Math.pow(1 - t, 2) * t * cp1X + 
+              3 * (1 - t) * Math.pow(t, 2) * cp2X + 
+              Math.pow(t, 3) * targetX;
+              
+    const y = Math.pow(1 - t, 3) * sourceY + 
+              3 * Math.pow(1 - t, 2) * t * cp1Y + 
+              3 * (1 - t) * Math.pow(t, 2) * cp2Y + 
+              Math.pow(t, 3) * targetY;
+    
+    return { x, y };
+  };
+
+  // Function to calculate tangent angle at a point on the curve
+  const getTangentAngle = (t) => {
+    const dx = targetX - sourceX;
+    
+    const controlOffsetX = Math.abs(dx) * 0.5;
+    
+    const cp1X = sourceX + controlOffsetX;
+    const cp1Y = sourceY;
+    const cp2X = targetX - controlOffsetX;
+    const cp2Y = targetY;
+    
+    // Derivative of cubic bezier: B'(t) = 3(1-t)²(P₁-P₀) + 6(1-t)t(P₂-P₁) + 3t²(P₃-P₂)
+    const dx_dt = 3 * Math.pow(1 - t, 2) * (cp1X - sourceX) + 
+                  6 * (1 - t) * t * (cp2X - cp1X) + 
+                  3 * Math.pow(t, 2) * (targetX - cp2X);
+                  
+    const dy_dt = 3 * Math.pow(1 - t, 2) * (cp1Y - sourceY) + 
+                  6 * (1 - t) * t * (cp2Y - cp1Y) + 
+                  3 * Math.pow(t, 2) * (targetY - cp2Y);
+    
+    return Math.atan2(dy_dt, dx_dt) * (180 / Math.PI);
+  };
 
   // Function to create arrow markers along the path
   const createArrowMarkers = () => {
@@ -34,12 +84,11 @@ const CustomEdge = ({ sourceX, sourceY, targetX, targetY, sourcePosition, target
       const basePosition = (i / arrowCount) + animationOffset;
       const t = basePosition % 1; // Keep position between 0 and 1
       
-      // Calculate position along the bezier curve
-      const x = sourceX + (targetX - sourceX) * t;
-      const y = sourceY + (targetY - sourceY) * t;
+      // Get position on the actual bezier curve
+      const { x, y } = getPointOnBezierCurve(t);
       
-      // Calculate rotation angle based on direction
-      const angle = Math.atan2(targetY - sourceY, targetX - sourceX) * (180 / Math.PI);
+      // Calculate rotation angle based on curve tangent
+      const angle = getTangentAngle(t);
       
       arrows.push(
         <g key={i} transform={`translate(${x}, ${y}) rotate(${angle})`}>
