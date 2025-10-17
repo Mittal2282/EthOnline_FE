@@ -10,7 +10,8 @@ const PlaygroundSelector = () => {
     setActivePlaygroundId,
     createPlayground,
     deletePlayground,
-    renamePlayground
+    renamePlayground,
+    connectAllNodes
   } = usePlayground();
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -18,6 +19,7 @@ const PlaygroundSelector = () => {
   const [newPlaygroundName, setNewPlaygroundName] = useState('');
   const [editingPlayground, setEditingPlayground] = useState(null);
   const [editingName, setEditingName] = useState('');
+  const [isConnecting, setIsConnecting] = useState(false);
 
   const handleCreatePlayground = () => {
     if (newPlaygroundName.trim()) {
@@ -59,6 +61,49 @@ const PlaygroundSelector = () => {
     }
   };
 
+  const handleConnectAll = async () => {
+    if (isConnecting) return;
+    
+    setIsConnecting(true);
+    try {
+      await connectAllNodes();
+      // Show success feedback
+      setTimeout(() => setIsConnecting(false), 1000);
+    } catch (error) {
+      console.error('Error connecting nodes:', error);
+      setIsConnecting(false);
+    }
+  };
+
+  // Check if there are any nodes that can be connected (not all already connected)
+  const hasUnconnectedNodes = () => {
+    if (!activePlayground?.nodes || activePlayground.nodes.length < 2) return false;
+    
+    const nodes = activePlayground.nodes;
+    const edges = activePlayground.edges || [];
+    
+    // Sort nodes by x position
+    const sortedNodes = [...nodes].sort((a, b) => a.position.x - b.position.x);
+    
+    // Check if any adjacent nodes are not connected
+    for (let i = 0; i < sortedNodes.length - 1; i++) {
+      const sourceNode = sortedNodes[i];
+      const targetNode = sortedNodes[i + 1];
+      
+      const alreadyConnected = edges.some(edge => 
+        (edge.source === sourceNode.id && edge.target === targetNode.id) ||
+        (edge.source === targetNode.id && edge.target === sourceNode.id)
+      );
+      
+      if (!alreadyConnected) {
+        return true;
+      }
+    }
+    
+    return false;
+  };
+
+ 
   return (
     <div className="flex items-center gap-2">
       {/* Playground Selector Button */}
@@ -169,6 +214,9 @@ const PlaygroundSelector = () => {
         </AnimatePresence>
       </div>
 
+      
+     
+
       {/* Add New Playground Button - Outside Dropdown */}
       <motion.button
         onClick={() => setIsCreating(true)}
@@ -181,6 +229,43 @@ const PlaygroundSelector = () => {
         </svg>
         New Playground
       </motion.button>
+ {/* Connect All Button - Only show when 2+ nodes exist and there are unconnected nodes */}
+        {hasUnconnectedNodes() && (
+          <motion.button
+            onClick={handleConnectAll}
+            disabled={isConnecting}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium text-sm transition-all duration-200 shadow-sm hover:shadow-md ${
+              isConnecting 
+                ? 'bg-gray-500 text-white cursor-not-allowed' 
+                : 'bg-gray-900 hover:bg-gray-800 text-white'
+            }`}
+            whileHover={!isConnecting ? { scale: 1.02 } : {}}
+            whileTap={!isConnecting ? { scale: 0.98 } : {}}
+          >
+            {isConnecting ? (
+              <>
+                <motion.svg 
+                  className="w-3.5 h-3.5" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </motion.svg>
+                Connecting...
+              </>
+            ) : (
+              <>
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+                Connect All
+              </>
+            )}
+          </motion.button>
+        )}
 
       {/* Create Playground Modal */}
       {isCreating && (

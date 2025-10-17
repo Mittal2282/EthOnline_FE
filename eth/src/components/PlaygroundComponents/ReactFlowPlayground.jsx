@@ -27,7 +27,7 @@ const edgeTypes = {
 };
 
 const ReactFlowPlayground = () => {
-  const { activePlayground, updateActivePlayground, clearActivePlayground } = usePlayground();
+  const { activePlayground, updateActivePlayground, clearActivePlayground, setConnectAllNodesFn } = usePlayground();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
@@ -43,13 +43,6 @@ const ReactFlowPlayground = () => {
       setIsInitialized(true);
     }
   }, [activePlayground, setNodes, setEdges]);
-
-  // Reset initialization flag when playground changes (but not when creating new ones)
-  useEffect(() => {
-    if (activePlayground) {
-      setIsInitialized(false);
-    }
-  }, [activePlayground]);
 
   // Update playground context when local state changes (with debouncing)
   useEffect(() => {
@@ -253,12 +246,69 @@ const ReactFlowPlayground = () => {
     setPopupState({ isOpen: false, nodeData: null });
   };
 
+  // Function to connect all nodes in sequence
+  const connectAllNodes = useCallback(async () => {
+    if (nodes.length < 2) return;
+
+    // Sort nodes by their x position (left to right)
+    const sortedNodes = [...nodes].sort((a, b) => a.position.x - b.position.x);
+    
+    // Create edges connecting each node to the next one, but only if not already connected
+    const newEdges = [];
+    for (let i = 0; i < sortedNodes.length - 1; i++) {
+      const sourceNode = sortedNodes[i];
+      const targetNode = sortedNodes[i + 1];
+      
+      // Check if these nodes are already connected
+      const alreadyConnected = edges.some(edge => 
+        (edge.source === sourceNode.id && edge.target === targetNode.id) ||
+        (edge.source === targetNode.id && edge.target === sourceNode.id)
+      );
+      
+      if (!alreadyConnected) {
+        newEdges.push({
+          id: `connect-all-${sourceNode.id}-${targetNode.id}`,
+          source: sourceNode.id,
+          target: targetNode.id,
+          animated: true,
+          style: {
+            stroke: '#FFA500',
+            strokeWidth: 1.5,
+          },
+          markerEnd: {
+            type: 'arrowclosed',
+            width: 12,
+            height: 12,
+            color: '#374151',
+          },
+          data: {
+            onDelete: (edgeId) => deleteEdge(edgeId)
+          }
+        });
+      }
+    }
+
+    // Add edges one by one with a small delay for visual effect
+    for (let i = 0; i < newEdges.length; i++) {
+      setEdges((eds) => [...eds, newEdges[i]]);
+      if (i < newEdges.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 200)); // 200ms delay between connections
+      }
+    }
+  }, [nodes, edges, setEdges, deleteEdge]);
+
+  // Register the connectAllNodes function with the context
+  useEffect(() => {
+    setConnectAllNodesFn(() => connectAllNodes);
+    return () => setConnectAllNodesFn(null);
+  }, [connectAllNodes, setConnectAllNodesFn]);
+
   
 
   return (
     <div className="flex h-full bg-white">
       {/* Sidebar (collapsed by default, expands on hover) */}
-      <div className="group/sidebar bg-gray-50 border-r border-gray-100 h-full flex flex-col overflow-hidden transition-all duration-300 w-16 hover:w-72">
+      <div className="group/sidebar bg-gray-50 border-r border-gray-100 h-[85vh] flex flex-col overflow-hidden transition-all duration-300 w-16 hover:w-72">
 
         {/* Entities List */}
         <div className="flex-1 overflow-y-auto p-2 group-hover/sidebar:p-4 space-y-2">
@@ -309,7 +359,7 @@ const ReactFlowPlayground = () => {
       </div>
 
       {/* Main Playground */}
-      <div className="flex-1 flex flex-col bg-gray-50">
+      <div className="flex-1 flex flex-col bg-gray-50 h-[85vh]">
         {/* React Flow Canvas */}
         <div className="flex-1 relative" ref={reactFlowWrapper}>
           <ReactFlow

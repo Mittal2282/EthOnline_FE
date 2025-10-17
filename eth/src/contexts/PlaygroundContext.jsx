@@ -99,6 +99,15 @@ export const PlaygroundProvider = ({ children }) => {
     }
   }, [activePlaygroundId, updatePlayground]);
 
+  // Function to connect all nodes in sequence - will be set by ReactFlowPlayground
+  const [connectAllNodesFn, setConnectAllNodesFn] = useState(null);
+  
+  const connectAllNodes = useCallback(() => {
+    if (connectAllNodesFn) {
+      connectAllNodesFn();
+    }
+  }, [connectAllNodesFn]);
+
   const value = {
     playgrounds,
     activePlayground,
@@ -109,7 +118,9 @@ export const PlaygroundProvider = ({ children }) => {
     updateActivePlayground,
     deletePlayground,
     renamePlayground,
-    clearActivePlayground
+    clearActivePlayground,
+    connectAllNodes,
+    setConnectAllNodesFn
   };
 
   return (

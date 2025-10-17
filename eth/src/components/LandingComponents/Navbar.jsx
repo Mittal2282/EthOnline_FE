@@ -1,16 +1,41 @@
 /* eslint-disable no-unused-vars */
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useAccount, useConnect, useDisconnect, useBalance } from 'wagmi';
 import orbixLogo from "../../../public/OrbixLogo.jpg";
 
 const Navbar = () => {
-  const [isWalletConnected, setIsWalletConnected] = useState(false);
+  const { address, isConnected } = useAccount();
+  const { connect, connectors, isPending } = useConnect();
+  const { disconnect } = useDisconnect();
+  const { data: balance } = useBalance({
+    address: address,
+  });
+
+  // Get MetaMask connector
+  const metaMaskConnector = connectors.find(connector => connector.name === 'MetaMask');
 
   const handleConnectWallet = () => {
-    // Mock wallet connection
-    setIsWalletConnected(!isWalletConnected);
+    if (!metaMaskConnector) {
+      alert('MetaMask is not installed. Please install MetaMask to connect your wallet!');
+      return;
+    }
+    
+    if (isConnected) {
+      disconnect();
+    } else {
+      connect({ connector: metaMaskConnector });
+    }
   };
 
+  const formatAddress = (address) => {
+    if (!address) return '';
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
+
+  const formatBalance = (balance) => {
+    if (!balance) return '0 ETH';
+    return `${parseFloat(balance.formatted).toFixed(4)} ${balance.symbol}`;
+  };
 
   const containerVariants = {
     hidden: { opacity: 0, y: -20 },
@@ -44,27 +69,53 @@ const Navbar = () => {
             variants={itemVariants}
           >
             <img src={orbixLogo} alt="Orbix Logo" className="h-6" />
-            
           </motion.div>
 
-          {/* Right Section - Connect Wallet Button */}
-          <motion.button
-            onClick={handleConnectWallet}
-            className=" bg-gray-900 hover:bg-gray-800 text-white px-4 py-2.5 rounded-lg font-medium text-sm transition-colors duration-200"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+          {/* Right Section - Wallet Connection */}
+          <motion.div
+            className="flex items-center space-x-3"
             variants={itemVariants}
           >
-            {isWalletConnected ? (
-              <>
-                <span>Connected</span>
-              </>
+            {isConnected ? (
+              <div className="flex items-center space-x-3">
+                {/* Wallet Info */}
+                <div className="text-right">
+                  <div className="text-sm font-medium text-gray-900">
+                    {formatAddress(address)}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {formatBalance(balance)}
+                  </div>
+                </div>
+                
+                {/* Disconnect Button */}
+                <motion.button
+                  onClick={handleConnectWallet}
+                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors duration-200"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  Disconnect
+                </motion.button>
+              </div>
             ) : (
-              <span>Connect Wallet</span>
+              <motion.button
+                onClick={handleConnectWallet}
+                disabled={isPending}
+                className="bg-gray-900 hover:bg-gray-800 disabled:bg-gray-400 text-white px-4 py-2.5 rounded-lg font-medium text-sm transition-colors duration-200"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                {isPending 
+                  ? 'Connecting...' 
+                  : metaMaskConnector 
+                    ? 'Connect Wallet' 
+                    : 'Install MetaMask'
+                }
+              </motion.button>
             )}
-          </motion.button>
+          </motion.div>
         </div>
-
       </div>
     </motion.nav>
   );

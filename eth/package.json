@@ -11,12 +11,16 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.14",
+    "@wagmi/connectors": "^6.0.0",
+    "ethers": "^6.15.0",
     "framer-motion": "^12.23.24",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-router-dom": "^7.9.4",
     "reactflow": "^11.11.4",
-    "tailwindcss": "^4.1.14"
+    "tailwindcss": "^4.1.14",
+    "wagmi": "^2.18.0",
+    "web3modal": "^1.9.12"
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",
